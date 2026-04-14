@@ -6,7 +6,7 @@ from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from config import (
-    ANTHROPIC_API_KEY,
+    GROQ_API_KEY,
     DISCORD_WEBHOOK_URL,
     CHECK_INTERVAL_MINUTES,
     MARKET_OPEN_HOUR,
@@ -75,8 +75,8 @@ def run_scan(force: bool = False):
 def main():
     # Validate config
     missing = []
-    if not ANTHROPIC_API_KEY:
-        missing.append("ANTHROPIC_API_KEY")
+    if not GROQ_API_KEY:
+        missing.append("GROQ_API_KEY")
     if not DISCORD_WEBHOOK_URL:
         missing.append("DISCORD_WEBHOOK_URL")
     if missing:

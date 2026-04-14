@@ -1,17 +1,18 @@
-import anthropic
 import json
 import logging
-from config import ANTHROPIC_API_KEY
+from groq import Groq
+from config import GROQ_API_KEY
 
 logger = logging.getLogger(__name__)
 
-client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+client = Groq(api_key=GROQ_API_KEY)
+MODEL = "llama-3.3-70b-versatile"
 
 
 def analyze_for_opportunities(articles: list[dict]) -> list[dict]:
     """
-    Send news articles to Claude. Claude identifies stock tickers mentioned,
-    assesses each as an investable opportunity, and returns structured results.
+    Send news articles to Groq (Llama 3.3 70B). Identifies tickers with
+    meaningful near-term catalysts and returns structured opportunities.
     """
     if not articles:
         return []
@@ -49,7 +50,7 @@ Ignore:
 
 For each opportunity identified, return a JSON object. If none qualify, return an empty array.
 
-Return ONLY a valid JSON array like this (no markdown, no extra text):
+Return ONLY a valid JSON array (no markdown, no extra text):
 [
   {{
     "ticker": "MSFT",
@@ -64,19 +65,24 @@ Return ONLY a valid JSON array like this (no markdown, no extra text):
 ]"""
 
     try:
-        response = client.messages.create(
-            model="claude-sonnet-4-6",
+        response = client.chat.completions.create(
+            model=MODEL,
             max_tokens=2048,
-            messages=[{"role": "user", "content": prompt}],
-            system=(
-                "You are a disciplined financial analyst. Be selective — "
-                "only flag opportunities with clear, specific catalysts. "
-                "Return valid JSON only."
-            ),
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a disciplined financial analyst. Be selective — "
+                        "only flag opportunities with clear, specific catalysts. "
+                        "Return valid JSON only, no markdown."
+                    ),
+                },
+                {"role": "user", "content": prompt},
+            ],
         )
-        raw = response.content[0].text.strip()
+        raw = response.choices[0].message.content.strip()
 
-        # Strip markdown code fences if present
+        # Strip markdown code fences if the model includes them anyway
         if raw.startswith("```"):
             raw = raw.split("```")[1]
             if raw.startswith("json"):
@@ -87,12 +93,12 @@ Return ONLY a valid JSON array like this (no markdown, no extra text):
         if not isinstance(opportunities, list):
             return []
 
-        logger.info(f"Claude identified {len(opportunities)} opportunities")
+        logger.info(f"Groq identified {len(opportunities)} opportunities")
         return opportunities
 
     except json.JSONDecodeError as e:
-        logger.error(f"Failed to parse Claude response as JSON: {e}")
+        logger.error(f"Failed to parse Groq response as JSON: {e}")
         return []
     except Exception as e:
-        logger.error(f"Claude analysis failed: {e}")
+        logger.error(f"Groq analysis failed: {e}")
         return []
