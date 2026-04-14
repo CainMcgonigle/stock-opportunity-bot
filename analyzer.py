@@ -1,11 +1,12 @@
 import json
 import logging
+import os
 from groq import Groq
-from config import GROQ_API_KEY
 
 logger = logging.getLogger(__name__)
 
-client = Groq(api_key=GROQ_API_KEY)
+# Let Groq read GROQ_API_KEY from the environment directly (set by load_dotenv in config)
+client = Groq()
 MODEL = "llama-3.3-70b-versatile"
 
 
