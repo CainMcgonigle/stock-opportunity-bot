@@ -4,7 +4,7 @@ import logging
 import json
 import os
 from datetime import datetime, timezone
-from config import RSS_FEEDS, ALPHA_VANTAGE_API_KEY, SEEN_ARTICLES_FILE, MAX_ARTICLES_PER_RUN
+from config import RSS_FEEDS, ALPHA_VANTAGE_API_KEY, SEEN_ARTICLES_FILE
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +62,7 @@ def fetch_rss_articles() -> list[dict]:
             logger.warning(f"Failed to fetch RSS feed {feed_url}: {e}")
 
     logger.info(f"Fetched {len(articles)} new RSS articles")
-    return articles[:MAX_ARTICLES_PER_RUN]
+    return articles
 
 
 def fetch_alpha_vantage_news() -> list[dict]:
@@ -126,7 +126,7 @@ def fetch_all_news() -> list[dict]:
         if a["id"] not in seen_ids:
             seen_ids.add(a["id"])
             unique.append(a)
-    return unique[:MAX_ARTICLES_PER_RUN]
+    return unique
 
 
 def mark_articles_seen(articles: list[dict]):

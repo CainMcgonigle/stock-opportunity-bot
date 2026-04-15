@@ -34,15 +34,34 @@ def send_opportunity(opportunity: dict, stock_data: dict):
 
     color = SIGNAL_COLORS.get(strength, 0xAAAAAA)
 
+    confidence = opportunity.get("confidence_score")
+    if confidence is not None:
+        try:
+            confidence = int(confidence)
+            if confidence >= 75:
+                confidence_str = f"{confidence}/100 🟢"
+            elif confidence >= 50:
+                confidence_str = f"{confidence}/100 🟡"
+            else:
+                confidence_str = f"{confidence}/100 🔴"
+        except (ValueError, TypeError):
+            confidence_str = "N/A"
+    else:
+        confidence_str = "N/A"
+
     fields = [
         {"name": "Signal Strength", "value": _signal_strength_emoji(strength), "inline": True},
         {"name": "Signal Type", "value": signal_type, "inline": True},
-        {"name": "\u200b", "value": "\u200b", "inline": True},
+        {"name": "Confidence", "value": confidence_str, "inline": True},
         {"name": "Price", "value": price, "inline": True},
         {"name": "Day Change", "value": change_pct, "inline": True},
         {"name": "Volume", "value": volume_ratio, "inline": True},
         {"name": "Market Cap", "value": market_cap, "inline": True},
     ]
+
+    suggested_action = opportunity.get("suggested_action", "")
+    if suggested_action:
+        fields.append({"name": "Suggested Action", "value": suggested_action[:512], "inline": False})
 
     if reasoning:
         fields.append({"name": "Why Now", "value": reasoning[:1024], "inline": False})
@@ -50,7 +69,11 @@ def send_opportunity(opportunity: dict, stock_data: dict):
     if risks:
         fields.append({"name": "Key Risks", "value": risks[:512], "inline": False})
 
-    if headlines:
+    links = opportunity.get("relevant_links", [])
+    if links:
+        links_text = "\n".join(f"[{i+1}] {url}" for i, url in enumerate(links[:3]))
+        fields.append({"name": "Sources", "value": links_text[:512], "inline": False})
+    elif headlines:
         headlines_text = "\n".join(f"- {h}" for h in headlines[:4])
         fields.append({"name": "Relevant Headlines", "value": headlines_text[:512], "inline": False})
 
@@ -70,6 +93,10 @@ def send_opportunity(opportunity: dict, stock_data: dict):
         "embeds": [embed],
     }
 
+    if not DISCORD_WEBHOOK_URL:
+        logger.info(f"[no webhook] Opportunity: ${ticker} — {signal_type} ({strength})")
+        return
+
     try:
         resp = requests.post(DISCORD_WEBHOOK_URL, json=payload, timeout=10)
         resp.raise_for_status()
@@ -80,6 +107,8 @@ def send_opportunity(opportunity: dict, stock_data: dict):
 
 def send_no_opportunities_ping():
     """Optional heartbeat so you know the bot is alive."""
+    if not DISCORD_WEBHOOK_URL:
+        return
     payload = {
         "username": "Stock Opportunity Bot",
         "content": f"Scan complete — no significant opportunities found. ({datetime.now().strftime('%H:%M ET')})",
@@ -91,6 +120,8 @@ def send_no_opportunities_ping():
 
 
 def send_startup_message():
+    if not DISCORD_WEBHOOK_URL:
+        return
     payload = {
         "username": "Stock Opportunity Bot",
         "embeds": [{
